@@ -3,6 +3,23 @@ from __future__ import annotations
 from numbers import Number
 from typing import List, Tuple
 from random import random, seed
+from sys import stdout
+from timeit import timeit
+
+
+def nextPowerOf2(n):
+    count = 0
+    # First n in the below
+    # condition is for the
+    # case where n is 0
+    if (n and not (n & (n - 1))):
+        return n
+
+    while (n != 0):
+        n >>= 1
+        count += 1
+
+    return 1 << count
 
 
 def gauss_matrix_mult(A: Matrix, B: Matrix) -> Matrix:
@@ -42,17 +59,56 @@ def gauss_matrix_mult(A: Matrix, B: Matrix) -> Matrix:
     return Matrix(result, clone_matrix=False)
 
 def get_matrix_quadrands(A: Matrix) -> Tuple[Matrix, Matrix, Matrix, Matrix]:
-    A11 = A.submatrix(0, A.num_of_rows//2, 0, A.num_of_cols//2)
-    A12 = A.submatrix(0, A.num_of_rows//2, A.num_of_cols//2, A.num_of_cols//2)
-    A21 = A.submatrix(A.num_of_rows//2, A.num_of_rows//2, 0, A.num_of_cols//2)
-    A22 = A.submatrix(A.num_of_rows//2, A.num_of_rows//2, A.num_of_cols//2, A.num_of_cols//2)
+    half_num_of_row = A.num_of_rows//2
+    if A.num_of_rows/2%1 > 0:
+        half_num_of_row += 1
+    half_num_of_cols = A.num_of_cols//2
+    if A.num_of_cols/2%1 > 0:
+        half_num_of_cols += 1
+    A11 = A.submatrix(0, half_num_of_row, 0, half_num_of_cols)
+    A12 = A.submatrix(0, half_num_of_row, A.num_of_cols - A.num_of_cols//2, A.num_of_cols//2)
+    A21 = A.submatrix(half_num_of_row, A.num_of_rows - A.num_of_rows//2, 0, half_num_of_cols)
+    A22 = A.submatrix(half_num_of_row, A.num_of_rows - A.num_of_rows//2, A.num_of_cols - A.num_of_cols//2, A.num_of_cols//2)
     return A11, A12, A21, A22
 
 
+def size_independent_matrix_mult(A: Matrix, B:Matrix) -> Matrix:
+
+    if A.num_of_cols != B.num_of_rows:
+        raise ValueError('The two matrices have different sizes')
+
+    size = max(A.num_of_rows, A.num_of_cols, B.num_of_cols)
+    size = nextPowerOf2(size)
+
+    # build an up scaling matrix of A
+    up_scaling_A = Matrix([[0 for x in range(size)] for y in range(size)],
+                    clone_matrix=False)
+
+    up_scaling_A.assign_submatrix(0, 0, A)
+    up_scaling_A.assign_submatrix(0, A.num_of_cols, NullMatrix(A.num_of_rows, size - A.num_of_cols))
+    up_scaling_A.assign_submatrix(A.num_of_rows, 0, NullMatrix(size - A.num_of_rows, A.num_of_cols))
+    up_scaling_A.assign_submatrix(A.num_of_rows, A.num_of_cols, NullMatrix(size-A.num_of_rows, size-A.num_of_cols))
+
+    # build an up scaling matrix of B
+    up_scaling_B = Matrix([[0 for x in range(size)] for y in range(size)],
+                    clone_matrix=False)
+
+    up_scaling_B.assign_submatrix(0, 0, B)
+    up_scaling_B.assign_submatrix(0, B.num_of_cols, NullMatrix(B.num_of_rows, size - B.num_of_cols))
+    up_scaling_B.assign_submatrix(B.num_of_rows, B.num_of_cols, NullMatrix(size-B.num_of_rows, size-B.num_of_cols))
+    up_scaling_A.assign_submatrix(B.num_of_rows, B.num_of_cols, NullMatrix(size - B.num_of_rows, size - B.num_of_cols))
+
+    # compute the multiplication
+    result = strassen_matrix_mult(up_scaling_A, up_scaling_B)
+
+    # return the down scaled matrix
+    return result.submatrix(0, A.num_of_rows, 0, B.num_of_cols)
+
 def strassen_matrix_mult(A: Matrix, B:Matrix) -> Matrix:
+    # by hypothesis B.num_of_rows = A.num_of_cols
 
     # Base case
-    if max(A.num_of_rows, B.num_of_cols, A.num_of_cols) < 32:  # by hypothesis B.num_of_rows = A.num_of_cols
+    if max(A.num_of_rows, B.num_of_cols, A.num_of_cols) < 32:
         return gauss_matrix_mult(A, B)
 
     # recursive step
@@ -356,6 +412,13 @@ class Matrix(object):
     def __repr__(self):
         return '\n'.join('{}'.format(row) for row in self._A)
 
+    def absolute_sum_of_elements(self):
+        absolute_sum = abs(self._A[0][0])
+        for y in range(0, self.num_of_rows):
+            for x in range(0, self.num_of_cols):
+                absolute_sum += abs(self._A[y][x])
+        return absolute_sum
+
 
 class IdentityMatrix(Matrix):
     ''' A class for identity matrices
@@ -371,16 +434,33 @@ class IdentityMatrix(Matrix):
 
         super().__init__(A)
 
+class NullMatrix(Matrix):
+    ''' A class for null matrices
+
+    Parameters
+    ----------
+    size_row: int
+        The number of row of the null matrix
+    size_col: int
+        The number of columns of the null matrix
+    '''
+    def __init__(self, size_row: int, size_col: int):
+        A = [[ 0 for x in range(size_col)]
+             for y in range(size_row)]
+
+        super().__init__(A)
+
+
 
 if __name__ == '__main__':
-    from random import random, seed
-    from sys import stdout
-    from timeit import timeit
+    seed(0)
 
-    seed(0)  # to have reproducibility
-
-    for i in range(0, 13):
-        size = 2**i
+    '''
+    This code give a concrete comparison of time effort of the two different program gauss_matrix_mult VS. strassen_matrix_mult
+    '''
+    stdout.write('n\tgauss\tstrassen\n')
+    for i in range(2, 10):
+        size = 2 ** i
         stdout.write(f'{size}')
         A = Matrix([[random() for x in range(size)] for y in range(size)])
         B = Matrix([[random() for x in range(size)] for y in range(size)])
@@ -390,4 +470,23 @@ if __name__ == '__main__':
             stdout.write('\t{:.3f}'.format(T))
             stdout.flush()
         stdout.write('\n')
+
+
+    '''
+    Follow a demo of how to make a matrix multiplication of A*B where A is a matrix (nxp) and B is a matrix (pxm)
+    '''
+    stdout.write('----------------------\n')
+    n = 63
+    p = 109
+    m = 81
+    A = Matrix([[random() for x in range(p)] for y in range(n)])
+    B = Matrix([[random() for x in range(m)] for y in range(p)])
+    R = size_independent_matrix_mult(A, B)
+    # error due to approximation
+    error = gauss_matrix_mult(A, B) - R
+    print("Sum of the absolute error: ", error.absolute_sum_of_elements())
+
+
+
+
 
