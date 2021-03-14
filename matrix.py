@@ -7,11 +7,10 @@ from sys import stdout
 from timeit import timeit
 
 
-def nextPowerOf2(n):
+def next_power_of_2(n):
     count = 0
-    # First n in the below
-    # condition is for the
-    # case where n is 0
+
+    # condition is for the case where n is 0
     if (n and not (n & (n - 1))):
         return n
 
@@ -72,13 +71,28 @@ def get_matrix_quadrands(A: Matrix) -> Tuple[Matrix, Matrix, Matrix, Matrix]:
     return A11, A12, A21, A22
 
 
-def size_independent_matrix_mult(A: Matrix, B:Matrix) -> Matrix:
+def matrix_mult_generalization(A: Matrix, B:Matrix) -> Matrix:
+    '''
+    compute the matrix multiplication of two matrix
+    Parameters
+    ----------
+    A: Matrix
+        The first matrix used for the multiplication operation having dimension (nxp)
+    B: Matrix
+        The second matrix used for the multiplication operation having dimension (pxm)
+
+    Returns
+    -------
+    Matrix
+        The matrix corresponding to the multiplication of the two matrices
+
+    '''
 
     if A.num_of_cols != B.num_of_rows:
         raise ValueError('The two matrices have different sizes')
 
     size = max(A.num_of_rows, A.num_of_cols, B.num_of_cols)
-    size = nextPowerOf2(size)
+    size = next_power_of_2(size)
 
     # build an up scaling matrix of A
     up_scaling_A = Matrix([[0 for x in range(size)] for y in range(size)],
@@ -481,7 +495,7 @@ if __name__ == '__main__':
     m = 81
     A = Matrix([[random() for x in range(p)] for y in range(n)])
     B = Matrix([[random() for x in range(m)] for y in range(p)])
-    R = size_independent_matrix_mult(A, B)
+    R = matrix_mult_generalization(A, B)
     # error due to approximation
     error = gauss_matrix_mult(A, B) - R
     print("Sum of the absolute error: ", error.absolute_sum_of_elements())
