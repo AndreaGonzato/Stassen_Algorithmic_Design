@@ -7,11 +7,10 @@ The idea for this function is to up scale the dimensions of the couple of matric
 
 Follow the demonstration of the time complexity of the algorithm:
 
-LET g(n,m,p) := next_power_of_2(max(n,m,p))\n
-IF (n > m and n > p)\n
-  LET f(n) := next_power_of_2(n) 
-  
-    f(n) \in O(n)
+LET g(n,m,p) := next_power_of_2(max(n,m,p))\
+IF (n > m and n > p)\
+  LET f(n) := next_power_of_2(n) \  
+    f(n) \in O(n) \
     
     g(n,m,p) = f(n) \in O(n)
     
