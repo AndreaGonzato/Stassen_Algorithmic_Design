@@ -5,17 +5,23 @@ The implementation of the general case can be found in the function *matrix_mult
 
 The idea for this function is to up scale the dimensions of the couple of matrices to the closest power of 2. To fills ehach of those bigger matrices we put the original matrix in the top left corner and fills the rest of the free space whit zeros. Then with these new matrices we can compute the Strassen algorithm and at the end we just need to down scale the matrix obtain after the multiplication.
 
-Follow the demonstration of the time complexity of the algorithm:
-
+Follow the demonstration of the time complexity of the algorithm:\
+<img src="https://render.githubusercontent.com/render/math?math=e^{i \pi} = -1">\
 LET g(n,m,p) := next_power_of_2(max(n,m,p))\
-IF (n > m and n > p)\
-    LET f(n) := next_power_of_2(n) \  
-    f(n) \in O(n)
+- IF (n > m and n > p)\
+    LET f(n) := next_power_of_2(n)\ 
     
-    g(n,m,p) = f(n) \in O(n)
-    
-    This mean that the time complexity T(n,m,p) of the algorithm can be express as
-    $T(n,m,p) = O(f(n)^2)+ S(f(n)^(log_2 7))$
+    <img src="https://render.githubusercontent.com/render/math?math=f(n) \in O(n)">\
+    g(n,m,p) = f(n) \in O(n)\    
+    This mean that the time complexity T(n,m,p) of the algorithm can be express as\
+    <img src="https://render.githubusercontent.com/render/math?math=T(n,m,p) = O(f(n)^2) + S(f(n)^\log 7">\
+    $T(n,m,p) = O(f(n)^2) + S(f(n)^(\log 7))$
+   
+
+- IF(m > n and m > p) 
+  ...
+- IF(p > n and p > m)
+ ...
 
 The time complexity of this alghoritm is:
 T()
