@@ -9,7 +9,7 @@ Follow the demonstration of the time complexity of the algorithm:
 
 LET g(n,m,p) := next_power_of_2(max(n,m,p))\
 IF (n > m and n > p)\
-  LET f(n) := next_power_of_2(n) \  
+  +LET f(n) := next_power_of_2(n) \  
     f(n) \in O(n) \
     
     g(n,m,p) = f(n) \in O(n)
