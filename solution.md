@@ -9,10 +9,10 @@ Follow the demonstration of the time complexity of the algorithm:
 
 LET g(n,m,p) := next_power_of_2(max(n,m,p))\
 IF (n > m and n > p)\
-  +LET f(n) := next_power_of_2(n) \  
-    f(n) \in O(n) \
+*Tabspace*LET f(n) := next_power_of_2(n) \  
+*Tabspace*f(n) \in O(n) \
     
-    g(n,m,p) = f(n) \in O(n)
+*Tabspace*g(n,m,p) = f(n) \in O(n)
     
     This mean that the time complexity T(n,m,p) of the algorithm can be express as
     $T(n,m,p) = O(f(n)^2)+ S(f(n)^(log_2 7))$
