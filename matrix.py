@@ -71,7 +71,7 @@ def get_matrix_quadrands(A: Matrix) -> Tuple[Matrix, Matrix, Matrix, Matrix]:
     return A11, A12, A21, A22
 
 
-def matrix_mult_generalization(A: Matrix, B:Matrix) -> Matrix:
+def matrix_mult_generalization(A: Matrix, B:Matrix, check_null_matrix = False) -> Matrix:
     '''
     compute the matrix multiplication of two matrix
     Parameters
@@ -113,13 +113,20 @@ def matrix_mult_generalization(A: Matrix, B:Matrix) -> Matrix:
     up_scaling_A.assign_submatrix(B.num_of_rows, B.num_of_cols, NullMatrix(size - B.num_of_rows, size - B.num_of_cols))
 
     # compute the multiplication
-    result = strassen_matrix_mult(up_scaling_A, up_scaling_B)
+    result = strassen_matrix_mult(up_scaling_A, up_scaling_B, check_null_matrix=check_null_matrix)
 
     # return the down scaled matrix
     return result.submatrix(0, A.num_of_rows, 0, B.num_of_cols)
 
-def strassen_matrix_mult(A: Matrix, B:Matrix) -> Matrix:
+def strassen_matrix_mult(A: Matrix, B:Matrix, check_null_matrix = False) -> Matrix:
     # by hypothesis B.num_of_rows = A.num_of_cols
+
+    # this is an improvement of the original implementation to try to reduce the number of auxiliary matrices
+    # (code for the question 3)
+    if check_null_matrix and (A.is_null() or B.is_null()):
+            return Matrix([[0 for x in range(B.num_of_cols)] for y in range(A.num_of_rows)],
+                          clone_matrix=False)
+
 
     # Base case
     if max(A.num_of_rows, B.num_of_cols, A.num_of_cols) < 32:
@@ -142,13 +149,13 @@ def strassen_matrix_mult(A: Matrix, B:Matrix) -> Matrix:
     S10 = B11 + B12
 
     # recursion calls
-    P1 = strassen_matrix_mult(A11, S1)
-    P2 = strassen_matrix_mult(S2, B22)
-    P3 = strassen_matrix_mult(S3, B11)
-    P4 = strassen_matrix_mult(A22, S4)
-    P5 = strassen_matrix_mult(S5, S6)
-    P6 = strassen_matrix_mult(S7, S8)
-    P7 = strassen_matrix_mult(S9, S10)
+    P1 = strassen_matrix_mult(A11, S1, check_null_matrix=check_null_matrix)
+    P2 = strassen_matrix_mult(S2, B22, check_null_matrix=check_null_matrix)
+    P3 = strassen_matrix_mult(S3, B11, check_null_matrix=check_null_matrix)
+    P4 = strassen_matrix_mult(A22, S4, check_null_matrix=check_null_matrix)
+    P5 = strassen_matrix_mult(S5, S6, check_null_matrix=check_null_matrix)
+    P6 = strassen_matrix_mult(S7, S8, check_null_matrix=check_null_matrix)
+    P7 = strassen_matrix_mult(S9, S10, check_null_matrix=check_null_matrix)
 
     # second batch of sums Theta(n^2)
     C11 = P5 + P4 - P2 + P6
@@ -167,6 +174,7 @@ def strassen_matrix_mult(A: Matrix, B:Matrix) -> Matrix:
     result.assign_submatrix(result.num_of_rows//2, result.num_of_cols//2, C22)
 
     return result
+
 
 
 class Matrix(object):
@@ -433,6 +441,13 @@ class Matrix(object):
                 absolute_sum += abs(self._A[y][x])
         return absolute_sum
 
+    def is_null(self) -> bool:
+        for y in range(0, self.num_of_rows):
+            for x in range(0, self.num_of_cols):
+                if self._A[y][x] != 0:
+                    return False
+        return True
+
 
 class IdentityMatrix(Matrix):
     ''' A class for identity matrices
@@ -467,7 +482,28 @@ class NullMatrix(Matrix):
 
 
 if __name__ == '__main__':
+
     seed(0)
+
+    '''
+    This code is a test to evaluate the effect of the improvement in the reduction of the number of auxiliary matrices.
+    When we set check_null_matrix = True we are using that improvement
+    '''
+    stdout.write('n | p |  m  |standard|improved\n')
+    for i in range(2, 9):
+        p = 2 ** i + 1
+        n = p // 2 + 1
+        m = p * 2
+        stdout.write(f'{n}\t')
+        stdout.write(f'{p}\t')
+        stdout.write(f'{m}\t')
+        A = Matrix([[random() for x in range(p)] for y in range(n)])
+        B = Matrix([[random() for x in range(m)] for y in range(p)])
+        for val in ['False', 'True']:
+            T = timeit(f'{"matrix_mult_generalization"}(A,B,'+val+')', globals=locals(), number=1)
+            stdout.write('\t{:.3f}'.format(T))
+            stdout.flush()
+        stdout.write('\n')
 
     '''
     This code give a concrete comparison of time effort of the two different program gauss_matrix_mult VS. strassen_matrix_mult
