@@ -7,10 +7,22 @@ from sys import stdout
 from timeit import timeit
 
 
-def next_power_of_2(n):
+
+def next_power_of_2(n: int):
+    '''
+    determine the next power of two of a given number
+
+    Parameters
+    ----------
+    n: an int number
+
+    Returns
+    -------
+    int value
+    '''
     count = 0
 
-    # condition is for the case where n is 0
+    # this condition is for the case when n is 0
     if (n and not (n & (n - 1))):
         return n
 
@@ -21,8 +33,9 @@ def next_power_of_2(n):
     return 1 << count
 
 
-def gauss_matrix_mult(A: Matrix, B: Matrix) -> Matrix:
-    ''' Multiply two matrices by using Gauss's algorithm
+def gauss_matrix_mult(A: Matrix, B: Matrix, check_null_matrix: bool = False) -> Matrix:
+    """
+    Multiply two matrices by using Gauss's algorithm
 
     Parameters
     ----------
@@ -30,6 +43,8 @@ def gauss_matrix_mult(A: Matrix, B: Matrix) -> Matrix:
         The first matrix to be multiplied
     B: Matrix
         The second matrix to be multiplied
+    check_null_matrix: bool
+        is a flag that define if it is necessary to manage differently the base case of null Matrix.
 
     Returns
     -------
@@ -41,9 +56,14 @@ def gauss_matrix_mult(A: Matrix, B: Matrix) -> Matrix:
     ValueError
         If the number of columns of `A` is different from the number of
         rows of `B`
-    '''
+    """
+    # a precondition for this function is that B.num_of_rows = A.num_of_cols
     if(A.num_of_cols != B.num_of_rows):
         raise ValueError("The two matrix can not be multiplied")
+
+    if check_null_matrix and (A.is_null() or B.is_null()):
+            return Matrix([[0 for x in range(B.num_of_cols)] for y in range(A.num_of_rows)],
+                          clone_matrix=False)
 
     result = [[0 for col in range(B.num_of_cols)]
               for row in range(A.num_of_rows)]
@@ -58,6 +78,7 @@ def gauss_matrix_mult(A: Matrix, B: Matrix) -> Matrix:
     return Matrix(result, clone_matrix=False)
 
 def get_matrix_quadrands(A: Matrix) -> Tuple[Matrix, Matrix, Matrix, Matrix]:
+
     half_num_of_row = A.num_of_rows//2
     if A.num_of_rows/2%1 > 0:
         half_num_of_row += 1
@@ -71,25 +92,36 @@ def get_matrix_quadrands(A: Matrix) -> Tuple[Matrix, Matrix, Matrix, Matrix]:
     return A11, A12, A21, A22
 
 
-def matrix_mult_generalization(A: Matrix, B:Matrix, check_null_matrix = False) -> Matrix:
+def matrix_mult_generalization(A: Matrix, B:Matrix, check_null_matrix: bool = True, improve_space_complexity: bool = True) -> Matrix:
     '''
     compute the matrix multiplication of two matrix
+
     Parameters
     ----------
     A: Matrix
         The first matrix used for the multiplication operation having dimension (nxp)
     B: Matrix
         The second matrix used for the multiplication operation having dimension (pxm)
+    check_null_matrix: bool
+        is a flag that define if it is necessary to manage differently the base case of null Matrix.
+    improve_space_complexity: bool
+        is a flag that define which Strassen function to call. (strassen_matrix_mult_improved VS strassen_matrix_mult).
+         If it true it call strassen_matrix_mult_improved
 
     Returns
     -------
     Matrix
         The matrix corresponding to the multiplication of the two matrices
 
+    Raises
+    ------
+    ValueError
+        If the number of columns of `A` is different from the number of
+        rows of `B`
     '''
-
-    if A.num_of_cols != B.num_of_rows:
-        raise ValueError('The two matrices have different sizes')
+    # a precondition for this function is that B.num_of_rows = A.num_of_cols
+    if(A.num_of_cols != B.num_of_rows):
+        raise ValueError("The two matrix can not be multiplied")
 
     size = max(A.num_of_rows, A.num_of_cols, B.num_of_cols)
     size = next_power_of_2(size)
@@ -113,13 +145,41 @@ def matrix_mult_generalization(A: Matrix, B:Matrix, check_null_matrix = False) -
     up_scaling_A.assign_submatrix(B.num_of_rows, B.num_of_cols, NullMatrix(size - B.num_of_rows, size - B.num_of_cols))
 
     # compute the multiplication
-    result = strassen_matrix_mult(up_scaling_A, up_scaling_B, check_null_matrix=check_null_matrix)
+    if improve_space_complexity:
+        result = strassen_matrix_mult_improved(up_scaling_A, up_scaling_B, check_null_matrix=check_null_matrix)
+    else:
+        result = strassen_matrix_mult(up_scaling_A, up_scaling_B, check_null_matrix=check_null_matrix)
 
     # return the down scaled matrix
     return result.submatrix(0, A.num_of_rows, 0, B.num_of_cols)
 
-def strassen_matrix_mult(A: Matrix, B:Matrix, check_null_matrix = False) -> Matrix:
-    # by hypothesis B.num_of_rows = A.num_of_cols
+def strassen_matrix_mult(A: Matrix, B:Matrix, check_null_matrix: bool = False) -> Matrix:
+    '''
+    compute the matrix multiplication of two square matrices
+
+    Parameters
+    ----------
+    A: Matrix
+        The first matrix used for the multiplication operation having dimension (nxn) where n = 2^i
+    B: Matrix
+        The second matrix used for the multiplication operation having dimension (nxn) where n = 2^i
+    check_null_matrix: bool
+        is a flag that define if it is necessary to manage differently the base case of null Matrix.
+
+    Returns
+    -------
+    Matrix
+        The matrix corresponding to the multiplication of the two matrices. Its size is (nxn)
+
+    Raises
+    ------
+    ValueError
+        If the number of columns of `A` is different from the number of
+        rows of `B`
+    '''
+    # a precondition for this function is that B.num_of_rows = A.num_of_cols
+    if(A.num_of_cols != B.num_of_rows):
+        raise ValueError("The two matrix can not be multiplied")
 
     # this is an improvement of the original implementation to try to reduce the number of auxiliary matrices
     # (code for the question 3)
@@ -127,12 +187,10 @@ def strassen_matrix_mult(A: Matrix, B:Matrix, check_null_matrix = False) -> Matr
             return Matrix([[0 for x in range(B.num_of_cols)] for y in range(A.num_of_rows)],
                           clone_matrix=False)
 
-
     # Base case
     if max(A.num_of_rows, B.num_of_cols, A.num_of_cols) < 32:
         return gauss_matrix_mult(A, B)
 
-    # recursive step
     A11, A12, A21, A22 = get_matrix_quadrands(A)
     B11, B12, B21, B22 = get_matrix_quadrands(B)
 
@@ -176,9 +234,89 @@ def strassen_matrix_mult(A: Matrix, B:Matrix, check_null_matrix = False) -> Matr
     return result
 
 
+def strassen_matrix_mult_improved(A: Matrix, B:Matrix, check_null_matrix: bool = False) -> Matrix:
+    '''
+    Compute the matrix multiplication of two square matrices.
+    This function is better than strassen_matrix_mult() regarding the space complexity
+
+    Parameters
+    ----------
+    A: Matrix
+        The first matrix used for the multiplication operation having dimension (nxn) where n = 2^i
+    B: Matrix
+        The second matrix used for the multiplication operation having dimension (nxn) where n = 2^i
+    check_null_matrix: bool
+        is a flag that define if it is necessary to manage differently the base case of null Matrix.
+
+    Returns
+    -------
+    Matrix
+        The matrix corresponding to the multiplication of the two matrices. Its size is (nxn)
+
+    Raises
+    ------
+    ValueError
+        If the number of columns of `A` is different from the number of
+        rows of `B`
+    '''
+    # a precondition for this function is that B.num_of_rows = A.num_of_cols
+    if(A.num_of_cols != B.num_of_rows):
+        raise ValueError("The two matrix can not be multiplied")
+
+    # this is an improvement of the original implementation to try to reduce the number of auxiliary matrices
+    # (code for the question 3)
+    if check_null_matrix and (A.is_null() or B.is_null()):
+            return Matrix([[0 for x in range(B.num_of_cols)] for y in range(A.num_of_rows)],
+                          clone_matrix=False)
+
+
+    # Base case
+    if max(A.num_of_rows, B.num_of_cols, A.num_of_cols) < 32:
+        return gauss_matrix_mult(A,B)
+
+    A11, A12, A21, A22 = get_matrix_quadrands(A)
+    B11, B12, B21, B22 = get_matrix_quadrands(B)
+
+    # build the resulting matrix
+    result = Matrix([[0 for x in range(B.num_of_cols)] for y in range(A.num_of_rows)],
+                    clone_matrix=False)
+
+
+    # recursion calls
+    S = strassen_matrix_mult_improved(A11, B12 - B22, check_null_matrix=check_null_matrix)
+    C12 = S
+    C22 = S
+    S = strassen_matrix_mult_improved(A21 + A22, B11, check_null_matrix=check_null_matrix)
+    C21 = S
+    C22 = C22 - S
+    S = strassen_matrix_mult_improved(A22, B21 - B11, check_null_matrix=check_null_matrix)
+    C11 = S
+    C21 = C21 + S
+    S = strassen_matrix_mult_improved(A11 + A22, B11 + B22, check_null_matrix=check_null_matrix)
+    C11 = C11 + S
+    C22 = C22 + S
+    S = strassen_matrix_mult_improved(A12 - A22, B21 + B22, check_null_matrix=check_null_matrix)
+    C11 = C11 + S
+    S = strassen_matrix_mult_improved(A11 - A21, B11 + B12, check_null_matrix=check_null_matrix)
+    C22 = C22 - S
+    # S2
+    S = strassen_matrix_mult_improved(A11 + A12, B22, check_null_matrix=check_null_matrix)
+    C12 = C12 + S
+    C11 = C11 - S
+
+    # copying Cij into the resulting matrix
+    result.assign_submatrix(0, 0, C11)
+    result.assign_submatrix(0, result.num_of_cols//2, C12)
+    result.assign_submatrix(result.num_of_rows//2, 0, C21)
+    result.assign_submatrix(result.num_of_rows//2, result.num_of_cols//2, C22)
+
+    return result
+
+
 
 class Matrix(object):
-    ''' A simple naive matrix class
+    '''
+    A simple naive matrix class
 
     Members
     -------
@@ -354,7 +492,7 @@ class Matrix(object):
         return res
 
     def __mul__(self, A: Matrix) -> Matrix:
-        ''' Multiply one matrix to this matrix
+        """ Multiply one matrix to this matrix
 
         Parameters
         ----------
@@ -372,7 +510,7 @@ class Matrix(object):
         ValueError
             If the number of columns of this matrix is different from the
             number of rows of `A`
-        '''
+        """
         return gauss_matrix_mult(self, A)
 
     def __rmul__(self, value: Number) -> Matrix:
@@ -402,7 +540,8 @@ class Matrix(object):
 
     def submatrix(self, from_row: int, num_of_rows: int,
                   from_col: int, num_of_cols: int) -> Matrix:
-        ''' Return a submatrix of this matrix
+        """
+        Return a sub-matrix of this matrix
 
         Parameters
         ----------
@@ -419,7 +558,7 @@ class Matrix(object):
         -------
         Matrix
             A submatrix of this matrix
-        '''
+        """
         A = [row[from_col:from_col+num_of_cols]
              for row in self._A[from_row:from_row+num_of_rows]]
 
@@ -434,7 +573,15 @@ class Matrix(object):
     def __repr__(self):
         return '\n'.join('{}'.format(row) for row in self._A)
 
-    def absolute_sum_of_elements(self):
+    def absolute_sum_of_elements(self) -> int:
+        """
+        Compute the absolute sum of all the elements of the matrix
+
+        Returns
+        -------
+        int: a value corresponding to the absolute sum
+
+        """
         absolute_sum = abs(self._A[0][0])
         for y in range(0, self.num_of_rows):
             for x in range(0, self.num_of_cols):
@@ -442,6 +589,12 @@ class Matrix(object):
         return absolute_sum
 
     def is_null(self) -> bool:
+        """Check if the matrix is a null Matrix
+
+        Returns
+        -------
+        bool: that indicate if a Matrix is a null Matrix or not. A Null Matrix is a matrix where all elements are zeros
+        """
         for y in range(0, self.num_of_rows):
             for x in range(0, self.num_of_cols):
                 if self._A[y][x] != 0:
@@ -450,21 +603,24 @@ class Matrix(object):
 
 
 class IdentityMatrix(Matrix):
-    ''' A class for identity matrices
+    """
+    A class for identity matrices
 
     Parameters
     ----------
     size: int
         The size of the identity matrix
-    '''
+    """
     def __init__(self, size: int):
         A = [[1 if x == y else 0 for x in range(size)]
              for y in range(size)]
 
         super().__init__(A)
 
+
 class NullMatrix(Matrix):
-    ''' A class for null matrices
+    '''
+    A class for null matrices
 
     Parameters
     ----------
@@ -485,23 +641,23 @@ if __name__ == '__main__':
 
     seed(0)
 
+
     '''
     This code is a test to evaluate the effect of the improvement in the reduction of the number of auxiliary matrices.
-    When we set check_null_matrix = True we are using that improvement
     '''
-    stdout.write('n | p |  m  |standard|improved\n')
+    stdout.write('   n    p    m |  standard  |lim. space|null check|both improvements\n')
     for i in range(2, 9):
-        p = 2 ** i + 1
-        n = p // 2 + 1
-        m = p * 2
-        stdout.write(f'{n}\t')
-        stdout.write(f'{p}\t')
-        stdout.write(f'{m}\t')
+        m = 2 ** i + 1
+        n = m // 2 + 1
+        p = m // 3
+        stdout.write(str(n).rjust(4))
+        stdout.write(str(p).rjust(5))
+        stdout.write(str(m).rjust(5))
         A = Matrix([[random() for x in range(p)] for y in range(n)])
         B = Matrix([[random() for x in range(m)] for y in range(p)])
-        for val in ['False', 'True']:
-            T = timeit(f'{"matrix_mult_generalization"}(A,B,'+val+')', globals=locals(), number=1)
-            stdout.write('\t{:.3f}'.format(T))
+        for values in [(False, False), (False, True), (True, False), (True, True)]:
+            T = timeit(f'{"matrix_mult_generalization"}(A,B,'+str(values[0])+','+str(values[1])+')', globals=locals(), number=1)
+            stdout.write('{:.3f}'.format(T).rjust(11))
             stdout.flush()
         stdout.write('\n')
 
